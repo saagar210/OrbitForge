@@ -42,7 +42,6 @@ fn add_sun(state: &mut SimulationState, mass: f64, radius: f64) {
 
 pub fn load_sun_earth(state: &mut SimulationState) {
     state.clear();
-    state.next_id = 0;
 
     let sun_mass: f64 = 50000.0;
     let orbit_radius: f64 = 250.0;
@@ -79,7 +78,6 @@ pub fn load_sun_earth(state: &mut SimulationState) {
 
 pub fn load_inner_solar(state: &mut SimulationState) {
     state.clear();
-    state.next_id = 0;
 
     let sun_mass = 50000.0;
     add_sun(state, sun_mass, 20.0);
@@ -96,7 +94,6 @@ pub fn load_inner_solar(state: &mut SimulationState) {
 
 pub fn load_outer_solar(state: &mut SimulationState) {
     state.clear();
-    state.next_id = 0;
 
     let sun_mass = 50000.0;
     add_sun(state, sun_mass, 20.0);
@@ -112,7 +109,6 @@ pub fn load_outer_solar(state: &mut SimulationState) {
 
 pub fn load_full_solar(state: &mut SimulationState) {
     state.clear();
-    state.next_id = 0;
 
     let sun_mass = 50000.0;
     add_sun(state, sun_mass, 20.0);
@@ -131,7 +127,6 @@ pub fn load_full_solar(state: &mut SimulationState) {
 
 pub fn load_binary_star(state: &mut SimulationState) {
     state.clear();
-    state.next_id = 0;
 
     // Two equal-mass stars orbiting their barycenter
     let star_mass = 25000.0;
@@ -186,7 +181,6 @@ pub fn load_binary_star(state: &mut SimulationState) {
 
 pub fn load_figure_eight(state: &mut SimulationState) {
     state.clear();
-    state.next_id = 0;
 
     // Chenciner-Montgomery three-body figure-8 solution
     // Scaled to our G=100 system

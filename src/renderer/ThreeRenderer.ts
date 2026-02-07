@@ -12,6 +12,9 @@ interface BodyVisuals {
   glow: THREE.Sprite;
   light: THREE.PointLight | null;
   trail: THREE.Line;
+  lastRadius: number;
+  lastColor: string;
+  lastIsFixed: boolean;
 }
 
 export class ThreeRenderer {
@@ -22,6 +25,7 @@ export class ThreeRenderer {
   private controls: OrbitControls;
 
   private bodyMap = new Map<number, BodyVisuals>();
+  private groupsCache = new Map<number, THREE.Group>();
   private frame: SimulationFrame | null = null;
   private animationId: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -201,7 +205,12 @@ export class ThreeRenderer {
     group.position.set(body.position.x, body.position.y, 0);
     this.scene.add(group);
 
-    return { group, mesh, glow, light, trail };
+    return {
+      group, mesh, glow, light, trail,
+      lastRadius: body.radius,
+      lastColor: body.color,
+      lastIsFixed: body.is_fixed,
+    };
   }
 
   updateFrame(frame: SimulationFrame) {
@@ -307,8 +316,17 @@ export class ThreeRenderer {
       // Update position
       visuals.group.position.set(body.position.x, body.position.y, 0);
 
+      // Update visuals if body properties changed (e.g. via editor)
+      this.syncBodyVisuals(visuals, body);
+
       // Update trail
       this.updateTrail(visuals, body);
+    }
+
+    // Rebuild groups cache for InteractionManager
+    this.groupsCache.clear();
+    for (const [id, v] of this.bodyMap) {
+      this.groupsCache.set(id, v.group);
     }
 
     // Remove stale bodies
@@ -327,6 +345,49 @@ export class ThreeRenderer {
 
     // Update collision flashes
     this.updateCollisionFlashes();
+  }
+
+  private syncBodyVisuals(visuals: BodyVisuals, body: CelestialBody) {
+    if (body.radius !== visuals.lastRadius) {
+      visuals.mesh.geometry.dispose();
+      visuals.mesh.geometry = new THREE.SphereGeometry(body.radius, 32, 32);
+      const glowScale = body.radius * (body.is_fixed ? 6 : 3);
+      visuals.glow.scale.set(glowScale, glowScale, 1);
+      visuals.lastRadius = body.radius;
+    }
+
+    if (body.color !== visuals.lastColor) {
+      const color = new THREE.Color(body.color);
+      (visuals.mesh.material as THREE.MeshStandardMaterial).color.copy(color);
+      (visuals.glow.material as THREE.SpriteMaterial).color.copy(color);
+      (visuals.trail.material as THREE.LineBasicMaterial).color.copy(color);
+      if (body.is_fixed) {
+        (visuals.mesh.material as THREE.MeshStandardMaterial).emissive.copy(color);
+      }
+      if (visuals.light) visuals.light.color.copy(color);
+      visuals.lastColor = body.color;
+    }
+
+    if (body.is_fixed !== visuals.lastIsFixed) {
+      const mat = visuals.mesh.material as THREE.MeshStandardMaterial;
+      const color = new THREE.Color(body.color);
+      mat.emissive.copy(body.is_fixed ? color : new THREE.Color(0x000000));
+      mat.emissiveIntensity = body.is_fixed ? 0.8 : 0;
+      mat.roughness = body.is_fixed ? 0.3 : 0.7;
+      (visuals.glow.material as THREE.SpriteMaterial).opacity = body.is_fixed ? 0.8 : 0.4;
+      const glowScale = body.radius * (body.is_fixed ? 6 : 3);
+      visuals.glow.scale.set(glowScale, glowScale, 1);
+
+      if (body.is_fixed && !visuals.light) {
+        visuals.light = new THREE.PointLight(color, 2, 5000);
+        visuals.group.add(visuals.light);
+      } else if (!body.is_fixed && visuals.light) {
+        visuals.group.remove(visuals.light);
+        visuals.light.dispose();
+        visuals.light = null;
+      }
+      visuals.lastIsFixed = body.is_fixed;
+    }
   }
 
   private updateTrail(visuals: BodyVisuals, body: CelestialBody) {
@@ -358,13 +419,7 @@ export class ThreeRenderer {
   }
 
   getBodyGroups(): ReadonlyMap<number, THREE.Group> {
-    // Return a view over the live map to avoid allocating a new one per call.
-    // Callers only need to iterate/get, so a typed readonly reference is safe.
-    const groups = new Map<number, THREE.Group>();
-    for (const [id, visuals] of this.bodyMap) {
-      groups.set(id, visuals.group);
-    }
-    return groups;
+    return this.groupsCache;
   }
 
   setSelectedBody(id: number | null) {

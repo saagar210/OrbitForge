@@ -98,20 +98,20 @@ export default function App() {
     return () => clearInterval(interval);
   }, [selectedBodyId]);
 
-  const handleTogglePause = useCallback(async () => {
-    await invoke("toggle_pause");
+  const handleTogglePause = useCallback(() => {
+    invoke("toggle_pause").catch(console.error);
   }, []);
 
-  const handleSetSpeed = useCallback(async (speed: number) => {
-    await invoke("set_speed", { multiplier: speed });
+  const handleSetSpeed = useCallback((speed: number) => {
+    invoke("set_speed", { multiplier: speed }).catch(console.error);
   }, []);
 
-  const handleReset = useCallback(async () => {
-    await invoke("load_test_scenario");
+  const handleReset = useCallback(() => {
+    invoke("load_test_scenario").catch(console.error);
   }, []);
 
-  const handleClear = useCallback(async () => {
-    await invoke("clear_simulation");
+  const handleClear = useCallback(() => {
+    invoke("clear_simulation").catch(console.error);
   }, []);
 
   // Keyboard shortcuts

@@ -141,6 +141,13 @@ pub fn export_state(state: State<SimState>) -> Result<String, String> {
 pub fn import_state(state: State<SimState>, json: String) -> Result<(), String> {
     let mut new_state: SimulationState =
         serde_json::from_str(&json).map_err(|e| e.to_string())?;
+
+    // Ensure next_id won't collide with existing body IDs
+    let max_id = new_state.bodies.iter().map(|b| b.id).max().unwrap_or(0);
+    if new_state.next_id <= max_id {
+        new_state.next_id = max_id + 1;
+    }
+
     new_state.prime_accelerations();
     let mut sim = state.lock().unwrap();
     *sim = new_state;

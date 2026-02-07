@@ -275,5 +275,6 @@ impl SimulationState {
     pub fn clear(&mut self) {
         self.bodies.clear();
         self.tick = 0;
+        self.next_id = 0;
     }
 }
