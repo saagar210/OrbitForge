@@ -3,9 +3,13 @@ import { useSimStore } from "../store";
 
 export function ScenarioSelector() {
   const scenarios = useSimStore((s) => s.scenarios);
+  const setSelectedBody = useSimStore((s) => s.setSelectedBody);
+  const setFollowBody = useSimStore((s) => s.setFollowBody);
 
   const handleLoad = async (id: string) => {
     try {
+      setSelectedBody(null);
+      setFollowBody(null);
       await invoke("load_scenario", { name: id });
     } catch (err) {
       console.error("Failed to load scenario:", err);

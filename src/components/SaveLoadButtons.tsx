@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
+import { shareState, importShared } from "../utils/sharing";
 
 export function SaveLoadButtons() {
   const handleSave = async () => {
@@ -33,8 +34,24 @@ export function SaveLoadButtons() {
     }
   };
 
+  const handleShare = async () => {
+    try {
+      await shareState();
+    } catch (err) {
+      console.error("Share failed:", err);
+    }
+  };
+
+  const handleImportShared = async () => {
+    try {
+      await importShared();
+    } catch (err) {
+      console.error("Import shared failed:", err);
+    }
+  };
+
   return (
-    <div className="flex gap-1.5">
+    <div className="flex gap-1.5 flex-wrap">
       <button
         onClick={handleSave}
         className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors text-white/70"
@@ -46,6 +63,20 @@ export function SaveLoadButtons() {
         className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors text-white/70"
       >
         Load
+      </button>
+      <button
+        onClick={handleShare}
+        className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors text-white/70"
+        title="Copy compressed state to clipboard"
+      >
+        Share
+      </button>
+      <button
+        onClick={handleImportShared}
+        className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors text-white/70"
+        title="Import shared state from clipboard"
+      >
+        Paste
       </button>
     </div>
   );

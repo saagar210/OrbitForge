@@ -57,7 +57,7 @@ export function Minimap() {
 
       for (const body of frame.bodies) {
         const x = SIZE / 2 + (body.position.x - cx) * scale;
-        const y = SIZE / 2 + (body.position.y - cy) * scale;
+        const y = SIZE / 2 - (body.position.y - cy) * scale;
         const r = Math.max(2, body.radius * scale * 0.5);
 
         ctx.fillStyle = body.color;

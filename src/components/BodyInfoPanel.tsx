@@ -64,7 +64,7 @@ export function BodyInfoPanel() {
 
   if (!body) return null;
 
-  const speed = Math.sqrt(body.velocity.x ** 2 + body.velocity.y ** 2);
+  const speed = Math.sqrt(body.velocity.x ** 2 + body.velocity.y ** 2 + body.velocity.z ** 2);
   const isFollowing = followBodyId === selectedBodyId;
 
   return (
@@ -91,7 +91,7 @@ export function BodyInfoPanel() {
         <div className="flex justify-between text-white/60">
           <span>Position</span>
           <span>
-            {body.position.x.toFixed(1)}, {body.position.y.toFixed(1)}
+            {body.position.x.toFixed(1)}, {body.position.y.toFixed(1)}, {body.position.z.toFixed(1)}
           </span>
         </div>
         <div className="flex justify-between text-white/60">
@@ -156,6 +156,31 @@ export function BodyInfoPanel() {
             className="accent-blue-400"
           />
         </div>
+
+        <div className="flex justify-between text-white/60">
+          <span>Type</span>
+          <span className="capitalize">{body.body_type}</span>
+        </div>
+
+        {body.body_type === "spacecraft" && (
+          <div className="pt-2 border-t border-white/10 space-y-1">
+            <div className="flex justify-between text-white/60">
+              <span>Fuel</span>
+              <span>{body.fuel.toFixed(1)} / {body.max_fuel.toFixed(0)}</span>
+            </div>
+            <div className="w-full h-2 bg-white/10 rounded overflow-hidden">
+              <div
+                className="h-full bg-green-500 transition-all"
+                style={{ width: `${body.max_fuel > 0 ? (body.fuel / body.max_fuel) * 100 : 0}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-white/60">
+              <span>Thrust</span>
+              <span>{Math.sqrt(body.thrust.x ** 2 + body.thrust.y ** 2 + body.thrust.z ** 2).toFixed(1)}</span>
+            </div>
+            <div className="text-white/40 text-[10px]">WASD to thrust (while selected)</div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">

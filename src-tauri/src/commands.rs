@@ -1,4 +1,6 @@
-use crate::physics::{CelestialBody, Vec2};
+use crate::galaxy;
+use crate::physics::{BodyType, CelestialBody, Vec3};
+use crate::procedural;
 use crate::scenarios;
 use crate::simulation::SimulationState;
 use serde::Deserialize;
@@ -11,13 +13,19 @@ pub type SimState = Arc<Mutex<SimulationState>>;
 pub struct BodyData {
     pub x: f64,
     pub y: f64,
+    #[serde(default)]
+    pub z: f64,
     pub vx: f64,
     pub vy: f64,
+    #[serde(default)]
+    pub vz: f64,
     pub mass: f64,
     pub radius: f64,
     pub color: String,
     pub name: String,
     pub is_fixed: bool,
+    #[serde(default)]
+    pub body_type: BodyType,
 }
 
 #[derive(Deserialize)]
@@ -61,16 +69,17 @@ pub fn add_body(state: State<SimState>, body_data: BodyData) -> u32 {
     let id = sim.allocate_id();
     let mass = body_data.mass.max(0.01);
     let radius = body_data.radius.max(0.5);
-    let body = CelestialBody::new(
+    let mut body = CelestialBody::new(
         id,
         &body_data.name,
-        Vec2::new(body_data.x, body_data.y),
-        Vec2::new(body_data.vx, body_data.vy),
+        Vec3::new(body_data.x, body_data.y, body_data.z),
+        Vec3::new(body_data.vx, body_data.vy, body_data.vz),
         mass,
         radius,
         &body_data.color,
         body_data.is_fixed,
     );
+    body.body_type = body_data.body_type;
     sim.add_body(body);
     id
 }
@@ -104,10 +113,20 @@ pub fn update_body(state: State<SimState>, id: u32, fields: BodyUpdate) {
 }
 
 #[tauri::command]
-pub fn update_body_velocity(state: State<SimState>, id: u32, vx: f64, vy: f64) {
+pub fn update_body_velocity(state: State<SimState>, id: u32, vx: f64, vy: f64, vz: Option<f64>) {
     let mut sim = state.lock().unwrap();
     if let Some(body) = sim.find_body_mut(id) {
-        body.velocity = Vec2::new(vx, vy);
+        body.velocity = Vec3::new(vx, vy, vz.unwrap_or(0.0));
+    }
+}
+
+#[tauri::command]
+pub fn set_spacecraft_thrust(state: State<SimState>, id: u32, tx: f64, ty: f64, tz: f64) {
+    let mut sim = state.lock().unwrap();
+    if let Some(body) = sim.find_body_mut(id) {
+        if body.body_type == BodyType::Spacecraft {
+            body.thrust = Vec3::new(tx, ty, tz);
+        }
     }
 }
 
@@ -121,12 +140,39 @@ pub fn load_scenario(state: State<SimState>, name: String) {
         "full_solar" => scenarios::load_full_solar(&mut sim),
         "binary_star" => scenarios::load_binary_star(&mut sim),
         "figure_eight" => scenarios::load_figure_eight(&mut sim),
+        "inclined_solar" => scenarios::load_inclined_solar(&mut sim),
+        "asteroid_belt" => scenarios::load_solar_with_belt(&mut sim),
+        "galaxy_collision" => galaxy::generate_collision(&mut sim, 300),
         _ => {}
     }
 }
 
 #[tauri::command]
-pub fn predict_orbit(state: State<SimState>, body_id: u32, steps: u32) -> Vec<Vec2> {
+pub fn generate_system(
+    state: State<SimState>,
+    star_mass: f64,
+    planet_count: u32,
+    min_spacing: f64,
+    max_radius: f64,
+) {
+    let mut sim = state.lock().unwrap();
+    procedural::generate_system(&mut sim, star_mass, planet_count, min_spacing, max_radius);
+}
+
+#[tauri::command]
+pub fn load_galaxy_collision(state: State<SimState>, particles_per_galaxy: Option<u32>) {
+    let mut sim = state.lock().unwrap();
+    galaxy::generate_collision(&mut sim, particles_per_galaxy.unwrap_or(300));
+}
+
+#[tauri::command]
+pub fn set_theta(state: State<SimState>, theta: f64) {
+    let mut sim = state.lock().unwrap();
+    sim.theta = theta.clamp(0.0, 2.0);
+}
+
+#[tauri::command]
+pub fn predict_orbit(state: State<SimState>, body_id: u32, steps: u32) -> Vec<Vec3> {
     let sim = state.lock().unwrap();
     sim.predict_orbit(body_id, steps.min(2000))
 }
@@ -148,8 +194,10 @@ pub fn import_state(state: State<SimState>, json: String) -> Result<(), String> 
         new_state.next_id = max_id + 1;
     }
 
-    new_state.prime_accelerations();
     let mut sim = state.lock().unwrap();
+    // Preserve GPU reference (lost during deserialization due to #[serde(skip)])
+    new_state.gpu = sim.gpu.clone();
+    new_state.prime_accelerations();
     *sim = new_state;
     Ok(())
 }

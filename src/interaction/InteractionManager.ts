@@ -15,6 +15,7 @@ export class InteractionManager {
   // Slingshot state
   private slingshotBodyId: number | null = null;
   private slingshotStart: THREE.Vector3 | null = null;
+  private slingshotPlane: THREE.Plane | null = null;
   private arrowLine: THREE.Line | null = null;
   private isDragging = false;
 
@@ -62,6 +63,10 @@ export class InteractionManager {
     this.cleanupSlingshot();
   }
 
+  setPlacementZ(z: number) {
+    this.plane.set(new THREE.Vector3(0, 0, 1), -z);
+  }
+
   destroy() {
     const el = this.renderer.getRendererDomElement();
     el.removeEventListener("pointerdown", this.handlePointerDown);
@@ -86,6 +91,13 @@ export class InteractionManager {
     this.raycaster.setFromCamera(this.mouse, this.renderer.getCamera());
     const target = new THREE.Vector3();
     const hit = this.raycaster.ray.intersectPlane(this.plane, target);
+    return hit ? target : null;
+  }
+
+  private getWorldPositionOnPlane(plane: THREE.Plane): THREE.Vector3 | null {
+    this.raycaster.setFromCamera(this.mouse, this.renderer.getCamera());
+    const target = new THREE.Vector3();
+    const hit = this.raycaster.ray.intersectPlane(plane, target);
     return hit ? target : null;
   }
 
@@ -121,17 +133,21 @@ export class InteractionManager {
     } else if (this.mode === "place") {
       const worldPos = this.getWorldPosition();
       if (worldPos) {
+        const isSpacecraft = e.shiftKey;
         invoke("add_body", {
           bodyData: {
             x: worldPos.x,
             y: worldPos.y,
+            z: worldPos.z,
             vx: 0,
             vy: 0,
-            mass: 1.0,
-            radius: 6.0,
-            color: "#00FF88",
-            name: "New Body",
+            vz: 0,
+            mass: isSpacecraft ? 0.5 : 1.0,
+            radius: isSpacecraft ? 4.0 : 6.0,
+            color: isSpacecraft ? "#00AAFF" : "#00FF88",
+            name: isSpacecraft ? "Spacecraft" : "New Body",
             is_fixed: false,
+            body_type: isSpacecraft ? "spacecraft" : "planet",
           },
         }).catch(console.error);
       }
@@ -143,7 +159,12 @@ export class InteractionManager {
         const group = groups.get(bodyId);
         if (group) {
           this.slingshotStart = group.position.clone();
+          // Create a plane through the body, facing the camera
+          const cam = this.renderer.getCamera();
+          const normal = new THREE.Vector3().subVectors(cam.position, this.slingshotStart).normalize();
+          this.slingshotPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, this.slingshotStart);
           this.isDragging = true;
+          this.renderer.setControlsEnabled(false);
         }
       }
     }
@@ -162,8 +183,8 @@ export class InteractionManager {
     }
 
     // Update slingshot arrow
-    if (this.isDragging && this.slingshotStart) {
-      const worldPos = this.getWorldPosition();
+    if (this.isDragging && this.slingshotStart && this.slingshotPlane) {
+      const worldPos = this.getWorldPositionOnPlane(this.slingshotPlane);
       if (worldPos) {
         this.updateArrow(this.slingshotStart, worldPos);
       }
@@ -173,32 +194,38 @@ export class InteractionManager {
   private _onPointerUp(e: PointerEvent) {
     this.updateMouseNDC(e);
 
-    if (this.isDragging && this.slingshotBodyId !== null && this.slingshotStart) {
-      const worldPos = this.getWorldPosition();
+    if (this.isDragging && this.slingshotBodyId !== null && this.slingshotStart && this.slingshotPlane) {
+      const worldPos = this.getWorldPositionOnPlane(this.slingshotPlane);
       if (worldPos) {
         // Velocity is opposite to drag direction (slingshot)
         const dx = this.slingshotStart.x - worldPos.x;
         const dy = this.slingshotStart.y - worldPos.y;
+        const dz = this.slingshotStart.z - worldPos.z;
         const scale = 0.5; // velocity scaling factor
         invoke("update_body_velocity", {
           id: this.slingshotBodyId,
           vx: dx * scale,
           vy: dy * scale,
+          vz: dz * scale,
         }).catch(console.error);
       }
     }
     this.cleanupSlingshot();
+    if (this.isDragging) {
+      this.renderer.setControlsEnabled(true);
+    }
     this.isDragging = false;
     this.slingshotBodyId = null;
     this.slingshotStart = null;
+    this.slingshotPlane = null;
   }
 
   private updateArrow(from: THREE.Vector3, to: THREE.Vector3) {
     this.cleanupSlingshot();
 
     const positions = new Float32Array([
-      from.x, from.y, 0.5,
-      to.x, to.y, 0.5,
+      from.x, from.y, from.z,
+      to.x, to.y, to.z,
     ]);
     const geom = new THREE.BufferGeometry();
     geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));

@@ -1,5 +1,9 @@
+mod barneshut;
 mod commands;
+mod galaxy;
+mod gpu_gravity;
 mod physics;
+mod procedural;
 mod scenarios;
 mod simulation;
 
@@ -13,6 +17,20 @@ use tauri::Emitter;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let sim_state = Arc::new(Mutex::new(SimulationState::new()));
+
+    // Init GPU gravity (best-effort, falls back to CPU)
+    {
+        let mut sim = sim_state.lock().unwrap();
+        match gpu_gravity::GpuGravity::new() {
+            Some(gpu) => {
+                sim.gpu = Some(Arc::new(gpu));
+                println!("GPU gravity compute initialized");
+            }
+            None => {
+                println!("GPU gravity not available, using CPU");
+            }
+        }
+    }
 
     // Load default scenario
     {
@@ -37,6 +55,10 @@ pub fn run() {
             commands::predict_orbit,
             commands::export_state,
             commands::import_state,
+            commands::set_spacecraft_thrust,
+            commands::generate_system,
+            commands::load_galaxy_collision,
+            commands::set_theta,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
