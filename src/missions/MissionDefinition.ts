@@ -34,6 +34,7 @@ export interface MissionProgress {
   missionId: string;
   objectiveStatus: boolean[];
   startTick: number;
+  spacecraftId: number | null;
   completed: boolean;
   failed: boolean;
 }
@@ -42,6 +43,7 @@ export function checkObjective(
   obj: MissionObjective,
   frame: SimulationFrame,
   spacecraftId: number | null,
+  elapsedTicks: number,
 ): boolean {
   if (spacecraftId === null) return false;
   const spacecraft = frame.bodies.find((b) => b.id === spacecraftId);
@@ -74,8 +76,7 @@ export function checkObjective(
       return speed >= (obj.minSpeed ?? 0);
     }
     case "survive_time": {
-      // This is tracked externally by tick counting
-      return false;
+      return elapsedTicks >= (obj.requiredTicks ?? 0);
     }
     default:
       return false;

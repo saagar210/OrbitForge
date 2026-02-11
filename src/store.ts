@@ -120,6 +120,7 @@ export const useSimStore = create<SimStore>((set) => ({
       missionId: id,
       objectiveStatus: Array(10).fill(false),
       startTick: s.frame?.tick ?? 0,
+      spacecraftId: null,
       completed: false,
       failed: false,
     } : null,
