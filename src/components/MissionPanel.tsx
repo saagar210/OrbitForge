@@ -20,6 +20,21 @@ export function MissionPanel() {
     const mission = MISSIONS.find((m) => m.id === activeMission);
     if (!mission) return;
 
+    const elapsed = frame.tick - missionProgress.startTick;
+
+    // Bind mission spacecraft once (prefer existing bound ID, then selected spacecraft, then first spacecraft found)
+    let missionSpacecraftId = missionProgress.spacecraftId;
+    if (missionSpacecraftId === null) {
+      const selected = selectedBodyId !== null ? frame.bodies.find((b) => b.id === selectedBodyId) : null;
+      const selectedSpacecraftId = selected?.body_type === "spacecraft" ? selected.id : null;
+      const fallbackSpacecraftId = frame.bodies.find((b) => b.body_type === "spacecraft")?.id ?? null;
+      missionSpacecraftId = selectedSpacecraftId ?? fallbackSpacecraftId;
+
+      if (missionSpacecraftId !== null) {
+        updateMissionProgress({ ...missionProgress, spacecraftId: missionSpacecraftId });
+      }
+    }
+
     const newStatus = [...missionProgress.objectiveStatus];
     let changed = false;
 
@@ -27,13 +42,7 @@ export function MissionPanel() {
       if (newStatus[i]) continue;
       const obj = mission.objectives[i];
 
-      if (obj.type === "survive_time") {
-        const elapsed = frame.tick - missionProgress.startTick;
-        if (elapsed >= (obj.requiredTicks ?? 0)) {
-          newStatus[i] = true;
-          changed = true;
-        }
-      } else if (checkObjective(obj, frame, selectedBodyId)) {
+      if (checkObjective(obj, frame, missionSpacecraftId, elapsed)) {
         newStatus[i] = true;
         changed = true;
       }
@@ -41,14 +50,10 @@ export function MissionPanel() {
 
     if (changed) {
       const completed = newStatus.every(Boolean);
-      const elapsed = frame.tick - missionProgress.startTick;
       const failed = mission.timeLimit ? elapsed > mission.timeLimit : false;
       updateMissionProgress({ ...missionProgress, objectiveStatus: newStatus, completed, failed });
-    } else if (mission.timeLimit) {
-      const elapsed = frame.tick - missionProgress.startTick;
-      if (elapsed > mission.timeLimit && !missionProgress.failed) {
-        updateMissionProgress({ ...missionProgress, failed: true });
-      }
+    } else if (mission.timeLimit && elapsed > mission.timeLimit && !missionProgress.failed) {
+      updateMissionProgress({ ...missionProgress, failed: true });
     }
   }, [frame?.tick, activeMission, missionProgress, selectedBodyId, updateMissionProgress]);
 
