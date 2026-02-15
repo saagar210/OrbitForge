@@ -16,3 +16,6 @@ pnpm-debug.log*
 .cache/
 .eslintcache
 *.tmp
+
+# Allow placeholder files for intentional empty tracked directories
+!.gitkeep
