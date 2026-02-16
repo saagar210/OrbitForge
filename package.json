@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri"
+    "dev": "pnpm exec vite",
+    "build": "pnpm exec tsc && pnpm exec vite build",
+    "preview": "pnpm exec vite preview",
+    "tauri": "pnpm exec tauri",
+    "dev:lean": "bash scripts/lean-dev.sh",
+    "clean:heavy": "bash scripts/clean-heavy.sh",
+    "clean:local": "bash scripts/clean-local.sh"
   },
   "keywords": [],
   "author": "",
