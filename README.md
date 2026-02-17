@@ -79,16 +79,55 @@ Mouse: click to select, scroll to zoom, drag to orbit camera. In **Place** mode,
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Run in development mode
-npm run tauri dev
+pnpm exec tauri dev
 
 # Build for production
-npm run tauri build
+pnpm exec tauri build
 ```
 
 Requires [Rust](https://rustup.rs/), [Node.js](https://nodejs.org/), and the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+## Normal Dev vs Lean Dev
+
+Use normal dev when you want fastest incremental rebuilds and do not care about local artifact growth.
+
+```bash
+pnpm exec tauri dev
+```
+
+Use lean dev when you want lower disk usage over long sessions.
+
+```bash
+pnpm run dev:lean
+```
+
+What lean dev changes:
+
+- Vite cache goes to a temporary directory (`$VITE_CACHE_DIR`) instead of `node_modules/.vite`.
+- Rust build output goes to a temporary directory (`$CARGO_TARGET_DIR`) instead of `src-tauri/target`.
+- On exit, temporary caches are removed and a targeted heavy-artifact cleanup runs.
+
+Tradeoff:
+
+- Lower disk usage after each session.
+- Slower startup on the next run because build caches are intentionally discarded.
+
+## Cleanup Commands
+
+Targeted cleanup (heavy build artifacts only, keeps dependencies):
+
+```bash
+pnpm run clean:heavy
+```
+
+Full local cleanup (all reproducible local caches, including dependencies):
+
+```bash
+pnpm run clean:local
+```
 
 ## Features at a Glance
 

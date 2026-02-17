@@ -6,6 +6,7 @@ const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  cacheDir: process.env.VITE_CACHE_DIR || "node_modules/.vite",
   clearScreen: false,
   server: {
     port: 1420,
